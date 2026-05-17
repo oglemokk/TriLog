@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="TRI-LOG">
+<meta name="theme-color" content="#0a0a0a">
+<title>TRI-LOG</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { background:#0a0a0a; color:#ddd; font-family:'Courier New',monospace; }
+  body { padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
+  button,textarea { font-family:inherit; }
+  textarea { -webkit-appearance:none; }
+  ::-webkit-scrollbar { width:0; }
+  a { -webkit-touch-callout:none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const { useState, useEffect, useCallback } = React;
+const h = React.createElement;
+const C = { bg:"#0a0a0a", surface:"#111", card:"#161616", border:"#222", accent:"#E8FF47", muted:"#444", dim:"#777", text:"#ddd", run:"#4DA6FF", bike:"#FF9F47", swim:"#3FFFCF", strength:"#FF6B9D", race:"#E8FF47" };
+const exerciseLibrary = {
+  deadBug:{name:"Dead Bug",target:"Deep core (transverse abdominis), lower back stability",cues:["Lie on your back, arms pointing straight up, knees bent at 90 degrees.","Press your lower back firmly into the floor and keep it there throughout.","Slowly lower the opposite arm and leg toward the floor.","Return to start with control, then switch sides.","If your lower back arches off the floor, reduce the range."]},
+  birdDog:{name:"Bird-Dog",target:"Spinal stabilisers (multifidus), glutes, balance",cues:["Start on hands and knees, hands under shoulders, knees under hips.","Extend the opposite arm and leg until both are level with your back.","Keep your hips square, do not let them rotate.","Hold for 2 seconds at the top, then return with control.","Imagine balancing a glass of water on your lower back."]},
+  gluteBridge:{name:"Glute Bridge",target:"Glutes, hamstrings, posterior chain",cues:["Lie on your back, knees bent, feet flat and hip-width apart.","Drive through your heels and lift your hips toward the ceiling.","Squeeze your glutes hard at the top, hold for 2 seconds.","Form a straight line from knees to shoulders. Do not over-arch.","Lower slowly. For single-leg, extend one leg straight out."]},
+  rdl:{name:"Single-Leg Romanian Deadlift",target:"Hamstrings, glutes, balance, posterior chain",cues:["Stand on one leg, slight bend in the knee.","Hinge at the hip, push your butt back as your torso lowers.","Let the free leg extend straight behind you for counterbalance.","Keep your back flat and hips square to the floor.","Drive through the heel to return to standing."]},
+  clamshell:{name:"Side-Lying Clamshell",target:"Glute medius, key for running hip stability",cues:["Lie on your side, knees bent, stacked on top of each other.","Keep your feet together throughout the movement.","Lift the top knee up like a clam opening, keep hips still.","Do not let your top hip roll backward.","Add a resistance band above the knees to progress."]},
+  mcgillCurl:{name:"McGill Curl-Up",target:"Deep abdominals, spine-safe core exercise",cues:["Lie on your back, one knee bent, one leg straight.","Place both hands under your lower back, palms down.","Lift your head and shoulders just slightly off the floor.","Do NOT flex your spine, the lift is tiny and rigid.","Hold briefly, lower with control. This protects the lower back."]},
+  catCow:{name:"Cat-Cow",target:"Lumbar spine mobility, warm-up and cool-down",cues:["Start on hands and knees in a tabletop position.","Cow: drop your belly, lift your chest and tailbone (inhale).","Cat: round your spine toward the ceiling, tuck your chin (exhale).","Move slowly between the two with your breath.","Great after every long run to decompress the spine."]},
+  bulgarianSplit:{name:"Bulgarian Split Squat",target:"Quads, glutes, single-leg strength",cues:["Stand lunge-length in front of a bench. Rest one foot behind on it.","Lower straight down, front thigh toward parallel.","Keep your front knee tracking over your toes.","Most of your weight stays on the front leg.","Drive through the front heel to stand. Go slow on the descent."]},
+  nordicCurl:{name:"Nordic Hamstring Curl",target:"Hamstrings (eccentric), top injury-prevention exercise",cues:["Kneel down, anchor your feet under something solid or have a partner hold.","Keep a straight line from knees to head, no hip bend.","Lower your torso toward the floor as slowly as you can.","Catch yourself with your hands, then push back up.","Even 3-4 second lowers are valuable. Build up gradually."]},
+  stepUp:{name:"Step-Up with Knee Drive",target:"Glutes, quads, running-specific power",cues:["Stand facing a bench or sturdy box.","Step up, driving through the heel of the leading foot.","At the top, drive the trailing knee up to 90 degrees.","Stand tall and balanced at the top for a beat.","Lower with control. Do not push off the back foot."]},
+  copenhagen:{name:"Copenhagen Side Plank",target:"Adductors, core, hip stability",cues:["Lie on your side, top foot or shin resting on a bench.","Lift your hips so your body forms a straight line.","The bottom leg hovers below or tucks up.","Hold strong, do not let the hips sag.","Start with short holds (10-20s) and build up."]},
+  calfRaise:{name:"Eccentric Calf Raise",target:"Calves, Achilles tendon resilience",cues:["Stand on the edge of a step, heels hanging off.","Rise up onto your toes using both feet.","Shift your weight onto ONE foot.","Lower that heel slowly below the step (3-4 seconds).","Reset with both feet and repeat. Builds Achilles durability."]},
+  hipFlexorStretch:{name:"Hip Flexor Stretch (Deep Lunge)",target:"Hip flexors, tightness here causes lower back pain",cues:["Kneel in a lunge: one foot forward, other knee on the floor.","Tuck your pelvis under (posterior tilt), this is the key.","Gently push your hips forward until you feel a stretch.","Keep your torso upright. Do not arch your lower back.","Hold 45 seconds each side. Tight hip flexors tilt the pelvis."]},
+  lateralBandWalk:{name:"Lateral Band Walk",target:"Glute medius, hip stability",cues:["Place a resistance band above your knees.","Drop into a quarter-squat, athletic stance.","Step sideways, keeping tension on the band the whole time.","Do not let your knees cave inward.","Take controlled steps. Keep your torso still."]},
+  pullUp:{name:"Pull-Up / Lat Pulldown",target:"Lats, the engine of your swim pull",cues:["Grip the bar slightly wider than shoulder-width.","Pull your shoulder blades down and back first.","Drive your elbows down toward your ribs.","Pull until your chin clears the bar (or bar to chest).","Lower slowly. No-bar option: band-assisted pulldown."]},
+  dbRow:{name:"Single-Arm Dumbbell Row",target:"Lats, mid-back, mimics the crawl catch-and-pull",cues:["One knee and hand on a bench, other foot on the floor.","Let the dumbbell hang, arm straight, back flat.","Pull the dumbbell to your hip, elbow close to your body.","Squeeze the shoulder blade at the top.","Lower with control. This trains your swim pull directly."]},
+  bandPullApart:{name:"Band Pull-Apart",target:"Rear delts, external rotators, shoulder health",cues:["Hold a resistance band with both hands, arms straight ahead.","Keep your arms straight at shoulder height.","Pull the band apart, bringing it toward your chest.","Squeeze your shoulder blades together.","Return slowly. Protects shoulders against swim volume."]},
+  facePull:{name:"Face Pull",target:"Rotator cuff, rear delts",cues:["Anchor a band at face height. Hold with both hands.","Pull the band toward your face, splitting your hands apart.","Aim your thumbs back past your ears.","Keep your elbows high throughout.","Crucial rotator-cuff work for swimmers."]},
+  pushUp:{name:"Narrow-Grip Push-Up",target:"Triceps, chest, swim exit strength",cues:["Hands roughly shoulder-width, slightly narrower.","Keep your body in a straight rigid line, brace your core.","Lower until your chest is just above the floor.","Keep your elbows tucked at about 45 degrees, not flared wide.","Press back up powerfully."]},
+  pigeon:{name:"Pigeon Pose",target:"Glutes, hip rotators, deep mobility",cues:["From all fours, bring one knee forward behind your wrist.","Extend the other leg straight back behind you.","Keep your hips square to the floor.","Fold your torso forward over the front shin.","Breathe and hold. Eases hip and glute tightness."]},
+};
+const L=(x1,y1,x2,y2,col)=>h('line',{x1,y1,x2,y2,stroke:col||"#4DA6FF",strokeWidth:3.5,strokeLinecap:"round"});
+const FL=(x1,x2,y)=>h('line',{x1,y1:y,x2,y2:y,stroke:"#333",strokeWidth:2});
+const CIR=(cx,cy,r)=>h('circle',{cx,cy,r,fill:"none",stroke:"#4DA6FF",strokeWidth:3.5});
+const TXT=(x,y,t)=>h('text',{x,y,fill:"#888",fontSize:11,textAnchor:"middle"},t);
+const PTH=(d,col)=>h('path',{d,fill:"none",stroke:col||"#4DA6FF",strokeWidth:3.5,strokeLinecap:"round"});
+const AR=(d)=>h('path',{d,fill:"none",stroke:"#E8FF47",strokeWidth:2.5,strokeLinecap:"round"});
+const diagramSets = {
+  deadBug:()=>[FL(20,280,150),CIR(70,118,14),L(84,122,150,130),L(150,130,210,135),L(110,126,120,80),L(120,80,118,45),L(150,130,175,95),L(175,95,200,70),L(180,133,210,120),L(210,120,245,135),AR("M 118 60 Q 108 55 100 62"),TXT(150,25,"opposite arm + leg lower")],
+  birdDog:()=>[FL(20,280,150),CIR(60,78,14),L(72,84,150,92),L(150,92,210,92),L(95,88,92,148),L(150,92,155,148),L(80,86,45,55),L(210,92,262,72),TXT(150,32,"extend opposite arm + leg")],
+  gluteBridge:()=>[FL(20,280,150),CIR(58,120,14),L(72,120,160,92),L(160,92,200,120),L(200,120,200,150),AR("M 150 70 Q 160 58 172 68"),TXT(150,45,"drive hips up, squeeze glutes")],
+  rdl:()=>[FL(20,280,200),CIR(95,58,14),L(100,71,135,120),L(135,120,150,200),L(118,95,135,120),L(135,120,240,105),L(105,80,70,110),AR("M 175 88 Q 200 80 225 95"),TXT(150,32,"hinge at hip, back flat")],
+  clamshell:()=>[FL(20,280,160),CIR(55,95,14),L(68,100,160,120),L(160,120,195,118),L(195,118,225,150),L(195,118,235,100),AR("M 215 95 Q 230 80 250 85"),TXT(160,40,"lift top knee, feet together")],
+  mcgillCurl:()=>[FL(20,280,150),CIR(78,120,14),L(90,128,170,142),L(170,142,245,148),L(150,138,175,105),L(175,105,210,142),TXT(155,35,"tiny lift - don't flex spine")],
+  catCow:()=>[FL(20,280,160),CIR(55,80,13),PTH("M 66 86 Q 110 70 155 88"),L(80,82,78,158),L(150,86,152,158),TXT(105,40,"COW - drop belly"),CIR(195,92,13),PTH("M 206 90 Q 240 55 275 92"),L(218,90,218,158),L(270,92,270,158),TXT(245,40,"CAT - round up")],
+  bulgarianSplit:()=>[FL(20,280,200),h('rect',{x:200,y:150,width:70,height:12,fill:"#333"}),CIR(110,50,14),L(110,64,115,120),L(115,120,105,160),L(105,160,105,200),L(115,120,180,155),L(180,155,215,150),L(112,85,140,115),TXT(150,28,"rear foot elevated")],
+  nordicCurl:()=>[FL(20,280,190),CIR(210,70,14),L(200,80,140,130),L(140,130,120,188),L(120,188,75,188),L(200,80,175,135),AR("M 235 95 Q 225 130 200 155"),TXT(150,32,"lower torso slowly")],
+  stepUp:()=>[FL(20,280,200),h('rect',{x:150,y:150,width:90,height:50,fill:"#333"}),CIR(150,50,14),L(150,64,155,115),L(155,115,172,150),L(155,115,120,135),L(120,135,135,160),L(152,85,185,105),AR("M 100 120 Q 108 105 122 110"),TXT(140,28,"drive trailing knee up")],
+  copenhagen:()=>[FL(20,280,190),h('rect',{x:200,y:120,width:70,height:12,fill:"#333"}),CIR(55,105,14),L(68,110,210,126),L(210,126,245,126),L(150,118,170,160),TXT(150,55,"hips up - straight line")],
+  calfRaise:()=>[h('rect',{x:40,y:140,width:120,height:60,fill:"#333"}),CIR(150,45,14),L(150,59,150,120),L(150,120,148,138),L(148,138,135,155),AR("M 185 80 L 185 130"),TXT(150,25,"lower heel slowly off step")],
+  hipFlexorStretch:()=>[FL(20,280,190),CIR(140,50,14),L(140,64,145,125),L(145,125,100,155),L(100,155,105,188),L(145,125,205,155),L(205,155,240,188),L(142,90,120,120),AR("M 165 110 Q 190 105 210 118"),TXT(150,26,"tuck pelvis, push hips fwd")],
+  lateralBandWalk:()=>[FL(20,280,195),CIR(140,55,14),L(140,69,142,115),L(142,115,105,160),L(105,160,105,193),L(142,115,185,160),L(185,160,185,193),h('path',{d:"M 105 178 Q 130 170 155 178",stroke:"#FF6B9D",strokeWidth:3,fill:"none"}),AR("M 210 130 L 245 130"),TXT(150,30,"band above knees")],
+  pullUp:()=>[h('line',{x1:40,y1:30,x2:260,y2:30,stroke:"#333",strokeWidth:5}),L(110,30,110,55),L(190,30,190,55),CIR(150,75,14),L(150,89,150,150),L(150,100,110,55),L(150,100,190,55),L(150,150,135,195),L(150,150,165,195),AR("M 220 110 L 220 65"),TXT(150,220,"drive elbows down")],
+  dbRow:()=>[FL(20,280,195),h('rect',{x:60,y:150,width:120,height:12,fill:"#333"}),CIR(95,80,13),PTH("M 106 84 Q 160 92 215 96"),L(130,88,130,150),L(215,96,240,150),L(160,90,172,130),h('circle',{cx:172,cy:142,r:10,fill:"#FF6B9D"}),AR("M 200 130 L 178 108"),TXT(150,32,"pull to hip, elbow close")],
+  bandPullApart:()=>[CIR(150,48,14),L(150,62,150,140),L(150,80,95,92),L(150,80,205,92),L(150,140,132,195),L(150,140,168,195),h('path',{d:"M 95 92 Q 150 70 205 92",stroke:"#FF6B9D",strokeWidth:3,fill:"none"}),AR("M 80 92 L 60 92"),AR("M 220 92 L 240 92"),TXT(150,28,"pull band apart to chest")],
+  facePull:()=>[h('line',{x1:255,y1:20,x2:255,y2:200,stroke:"#333",strokeWidth:4}),CIR(100,60,14),L(100,74,100,150),L(100,88,150,78),L(150,78,135,58),L(100,88,150,98),L(150,98,135,118),h('path',{d:"M 135 58 Q 200 70 255 80",stroke:"#FF6B9D",strokeWidth:3,fill:"none"}),h('path',{d:"M 135 118 Q 200 105 255 95",stroke:"#FF6B9D",strokeWidth:3,fill:"none"}),L(100,150,88,200),L(100,150,112,200),TXT(120,30,"pull to face, elbows high")],
+  pushUp:()=>[FL(20,280,160),CIR(60,95,13),PTH("M 72 99 L 230 120"),L(105,106,100,158),L(150,113,152,158),L(230,120,225,158),TXT(150,40,"rigid line, elbows ~45deg")],
+  pigeon:()=>[FL(20,280,170),CIR(80,95,13),PTH("M 90 102 Q 120 120 150 128"),PTH("M 90 110 Q 110 145 145 150"),L(150,128,245,160),PTH("M 120 135 Q 145 128 165 142"),TXT(150,35,"front shin bent, leg back")],
+};
+function Diagram({type}){
+  const els = diagramSets[type] ? diagramSets[type]() : [TXT(150,115,"Diagram")];
+  return h('svg',{viewBox:"0 0 300 230",style:{width:"100%",height:"auto",background:"#0d0d0d",borderRadius:6}},els);
+}
+const strengthSessions = {
+  backCore:{label:"Lower Back & Core",duration:"35-40 min",exercises:[{key:"deadBug",sets:"3x10 each side"},{key:"birdDog",sets:"3x12 each side"},{key:"gluteBridge",sets:"3x15"},{key:"rdl",sets:"3x10 each side"},{key:"clamshell",sets:"3x15 each side"},{key:"mcgillCurl",sets:"3x8"},{key:"catCow",sets:"2x10 slow"}]},
+  runningStrength:{label:"Running Strength",duration:"35-40 min",exercises:[{key:"bulgarianSplit",sets:"3x10 each side"},{key:"nordicCurl",sets:"3x6-8"},{key:"stepUp",sets:"3x12 each side"},{key:"copenhagen",sets:"3x20s each side"},{key:"calfRaise",sets:"3x15"},{key:"hipFlexorStretch",sets:"2x45s each side"},{key:"lateralBandWalk",sets:"2x15 each way"}]},
+  upperSwim:{label:"Upper Body + Swim",duration:"30-35 min",exercises:[{key:"pullUp",sets:"3x8-10"},{key:"dbRow",sets:"3x12 each side"},{key:"bandPullApart",sets:"3x15"},{key:"facePull",sets:"3x15"},{key:"deadBug",sets:"2x10"},{key:"pushUp",sets:"3x12"}]},
+  maintenance:{label:"Maintenance Strength",duration:"25-30 min",exercises:[{key:"gluteBridge",sets:"3x12 each side"},{key:"birdDog",sets:"3x10 each side"},{key:"nordicCurl",sets:"2x6"},{key:"calfRaise",sets:"2x12"},{key:"hipFlexorStretch",sets:"2x45s each side"}]},
+  mobility:{label:"Mobility & Stretching",duration:"15-20 min",exercises:[{key:"hipFlexorStretch",sets:"2x45s each side"},{key:"pigeon",sets:"2x60s each side"},{key:"catCow",sets:"2x10 slow"}]},
+};
+const D=(day,type,label,detail,session)=>({day,type,label,detail,session});
+const phases=[
+ {name:"Foundation",color:C.run,dates:"May 13 - Jun 8",goal:"Build run consistency. Strength 2x/week for lower-back prevention.",weeks:[
+  {dates:"May 13-19",days:[D("Mon","rest","Full Rest","Recovery is training. Sleep and eat well."),D("Tue","run","Easy Run 6 km","Zone 2 (~130-145 bpm). Conversational ~6:30-7:00/km."),D("Wed","strength","Lower Back & Core","","backCore"),D("Thu","bike","Bike 50-60 km","Steady Zone 2. Aerobic stimulus, no run impact."),D("Fri","run","Easy Run 7 km","Same easy Zone 2 effort."),D("Sat","strength","Running Strength","","runningStrength"),D("Sun","run","Long Run 10 km","Easy/conversational. Walk breaks fine. Take a gel.")]},
+  {dates:"May 20-26",days:[D("Mon","rest","Full Rest",""),D("Tue","run","Easy Run 7 km","Zone 2. Optional 4x20s strides at the end."),D("Wed","strength","Lower Back & Core","","backCore"),D("Thu","swim","Swim 30-40 min","Crawl technique. 1000-1200 m with rest."),D("Fri","run","Easy Run 8 km","Zone 2 - stronger than week 1 already."),D("Sat","strength","Running Strength","","runningStrength"),D("Sun","run","Long Run 12 km","Easy. Finish like you could do 2 more km.")]},
+  {dates:"May 27 - Jun 2",days:[D("Mon","rest","Full Rest",""),D("Tue","run","Easy Run 8 km","Zone 2. Last 1 km at marathon pace (5:20-5:35)."),D("Wed","strength","Lower Back & Core","","backCore"),D("Thu","bike","Bike 60-70 km","Include 2x10 min tempo (Zone 3)."),D("Fri","run","Easy Run 9 km","Zone 2."),D("Sat","strength","Upper Body + Swim","Lower back gets a break this week.","upperSwim"),D("Sun","run","Long Run 14 km","Easy. Gel at 45 min. Note any back sensation.")]},
+  {dates:"Jun 3-8",days:[D("Mon","rest","Rest","Recovery week - volume drops ~20%."),D("Tue","run","Easy Run 6 km","Short and easy. Legs should feel springy."),D("Wed","strength","Maintenance","Lighter - keep the stimulus, shed fatigue.","maintenance"),D("Thu","swim","Swim 30 min","Easy technique swim."),D("Fri","rest","Rest",""),D("Sat","bike","Bike 40-50 km","Easy Zone 1-2 spin."),D("Sun","run","Long Run 12 km","Cutback long run. Easy effort.")]},
+ ]},
+ {name:"Build",color:C.bike,dates:"Jun 9 - Jul 20",goal:"Run volume to 40-50 km/week. Tempo + intervals introduced.",weeks:[
+  {dates:"Jun 9-15",days:[D("Mon","rest","Rest",""),D("Tue","run","Tempo Run 10 km","2 km w-up + 5 km marathon pace + 3 km cool-down."),D("Wed","strength","Lower Back & Core","Day after tempo, not before.","backCore"),D("Thu","bike","Bike 60-80 km","Steady Zone 2."),D("Fri","run","Easy Run 10 km","Zone 2 recovery."),D("Sat","strength","Running Strength","","runningStrength"),D("Sun","run","Long Run 16 km","Easy. Last 3 km at marathon pace if good.")]},
+  {dates:"Jun 16-22",days:[D("Mon","rest","Rest",""),D("Tue","run","Intervals 10 km","1 km w-up + 6x1 km @10K pace, 90s jog + cool-down."),D("Wed","strength","Lower Back & Core","","backCore"),D("Thu","swim","Swim 45 min","1800 m. 8x100 m on 2 min."),D("Fri","run","Easy Run 10 km","Zone 2 only."),D("Sat","strength","Upper Body + Swim","","upperSwim"),D("Sun","run","Long Run 18 km","Easy pace. Gel every 45 min.")]},
+  {dates:"Jun 23-29",days:[D("Mon","rest","Rest",""),D("Tue","run","Threshold Run 11 km","3 km w-up + 6 km threshold + 2 km cool-down."),D("Wed","strength","Running Strength","Split squats + Nordics priority.","runningStrength"),D("Thu","bike","Bike 70 km","Steady Zone 2."),D("Fri","run","Easy Run 11 km","Easy. Optional 4 strides."),D("Sat","swim","Swim 50 min","2000 m. Continuous 400 m sets."),D("Sun","run","Long Run 20 km","First 20! Easy. Walk 1 min every 5 km if needed.")]},
+  {dates:"Jun 30 - Jul 6",days:[D("Mon","rest","Rest","Recovery week - volume drops 20-25%."),D("Tue","run","Easy Run 8 km","Zone 2."),D("Wed","strength","Maintenance","","maintenance"),D("Thu","swim","Swim 30 min","Easy relaxed swim."),D("Fri","bike","Bike 50 km","Easy spin."),D("Sat","rest","Rest",""),D("Sun","run","Long Run 15 km","Cutback long run. Easy.")]},
+  {dates:"Jul 7-13",days:[D("Mon","rest","Rest",""),D("Tue","run","Marathon Pace 13 km","2 km easy + 8 km MP + 3 km easy."),D("Wed","strength","Lower Back & Core","Core tested as long runs grow.","backCore"),D("Thu","bike","Bike 80 km","Zone 2 strong ride."),D("Fri","run","Easy Run 12 km","Zone 2."),D("Sat","strength","Running Strength","","runningStrength"),D("Sun","run","Long Run 22 km","Easy. Last 2 km at MP. Gels at 45 + 75 min.")]},
+  {dates:"Jul 14-20",days:[D("Mon","rest","Rest",""),D("Tue","run","Intervals 12 km","5x1.5 km @10K effort, 2 min jog rest."),D("Wed","strength","Upper Body + Swim","Back rests before peak block.","upperSwim"),D("Thu","swim","Swim 55 min","2400 m. Continuous 1000 m."),D("Fri","run","Easy Run 12 km","Zone 2."),D("Sat","bike","Bike 100 km","Strong steady ride."),D("Sun","run","Long Run 24 km","Key run of the block. Easy. Fuel every 40 min.")]},
+ ]},
+ {name:"Peak",color:"#FF4747",dates:"Jul 21 - Aug 17",goal:"Peak volume - 28-30 km long runs. Strength drops to 1x/week.",weeks:[
+  {dates:"Jul 21-27",days:[D("Mon","rest","Rest",""),D("Tue","run","Tempo 13 km","3 km easy + 8 km threshold + 2 km easy."),D("Wed","strength","Maintenance","1x/week now. 30 min max.","maintenance"),D("Thu","bike","Bike 80 km","Zone 2."),D("Fri","run","Easy Run 13 km","Zone 2."),D("Sat","bike","Bike 120 km","Longest ride. Ironman sim. Fuel every 45 min."),D("Sun","run","Long Run 26 km","Easy. Walk 1 min every 8 km. Gels at 45 + 90.")]},
+  {dates:"Jul 28 - Aug 3",days:[D("Mon","rest","Rest","Recovery week - volume drops 20%."),D("Tue","run","Easy Run 10 km","Zone 2 refresh."),D("Wed","strength","Maintenance","Even 20 min is enough this week.","maintenance"),D("Thu","swim","Swim 40 min","Easy swim."),D("Fri","bike","Bike 60 km","Easy Zone 2."),D("Sat","run","Marathon Pace 12 km","4 km easy + 6 km MP + 2 km easy."),D("Sun","run","Long Run 18 km","Cutback. Easy effort.")]},
+  {dates:"Aug 4-10",days:[D("Mon","rest","Rest",""),D("Tue","run","Marathon Pace 14 km","2 km easy + 10 km MP + 2 km easy. KEY WORKOUT."),D("Wed","strength","Maintenance","Short and focused. 25-30 min.","maintenance"),D("Thu","bike","Bike 80 km","Zone 2."),D("Fri","run","Easy Run 13 km","Zone 2."),D("Sat","swim","Swim 60 min","2600-2800 m. Strong swim."),D("Sun","run","Long Run 28-30 km","PEAK LONG RUN. Confidence run. Fuel every 40 min.")]},
+  {dates:"Aug 11-17",days:[D("Mon","rest","Rest",""),D("Tue","run","Intervals 12 km","Last hard session: 4x2 km @MP, 90s jog."),D("Wed","strength","Maintenance","Final full strength session.","maintenance"),D("Thu","swim","Swim 45 min","2000 m sharp."),D("Fri","run","Easy Run 10 km","Zone 2."),D("Sat","bike","Bike 80 km","Moderate. Last bigger ride."),D("Sun","run","Long Run 22 km","Last long run before taper. Easy.")]},
+ ]},
+ {name:"Taper",color:"#A47FFF",dates:"Aug 18 - Sep 12",goal:"Volume drops, intensity stays. Mobility replaces strength.",weeks:[
+  {dates:"Aug 18-24",days:[D("Mon","rest","Rest",""),D("Tue","run","Tempo Run 10 km","2 km easy + 5 km threshold + 3 km easy."),D("Wed","strength","Mobility & Stretching","No heavy lifting from here. Daily if you can.","mobility"),D("Thu","swim","Swim 40 min","1600-1800 m easy rhythm."),D("Fri","run","Easy Run 8 km","Zone 2."),D("Sat","bike","Bike 60 km","Easy. No heroics."),D("Sun","run","Long Run 16 km","Easy. Legs start feeling great - trust it.")]},
+  {dates:"Aug 25-31",days:[D("Mon","rest","Rest",""),D("Tue","run","Marathon Pace 8 km","2 km easy + 4 km MP + 2 km easy."),D("Wed","strength","Mobility","Hip flexors + pigeon + cat-cow.","mobility"),D("Thu","bike","Bike 40 km","Easy spin."),D("Fri","rest","Rest",""),D("Sat","run","Easy Run 6 km","Zone 2 short and sharp."),D("Sun","run","Long Run 12 km","Last long run. Easy. Visualise race day.")]},
+  {dates:"Sep 1-12 - Race Week",days:[D("Mon","rest","Rest",""),D("Tue","run","Easy Run 5 km","Zone 2. Light. Confident."),D("Wed","bike","Bike 30 km","Easy spin. Just moving."),D("Thu","run","Easy 4 km + Strides","4 km easy + 4x20s strides at MP."),D("Fri","rest","Full Rest","Carb load begins. Lay out kit. Sleep early."),D("Sat","run","Shake-out 2-3 km","10 min jog. Walk the course if you can."),D("Sun","race","MARATHON - Sep 12","Start 6:00/km for 5 km. Settle 5:20-5:35. Trust it all.")]},
+ ]},
+];
+const typeMeta={run:{c:C.run,i:"R"},bike:{c:C.bike,i:"B"},swim:{c:C.swim,i:"S"},strength:{c:C.strength,i:"W"},rest:{c:C.muted,i:"-"},race:{c:C.race,i:"!"}};
+const flatWeeks=[];
+phases.forEach((ph,pi)=>ph.weeks.forEach((w)=>flatWeeks.push(Object.assign({},w,{phaseIdx:pi,phase:ph}))));
+function RatingBar({label,value,color,onChange}){
+  return h('div',{style:{marginBottom:10}},
+    h('div',{style:{display:"flex",justifyContent:"space-between",fontSize:11,color:C.dim,marginBottom:4}},
+      h('span',null,label),h('span',{style:{color:value?color:C.muted}},value?value+"/5":"-")),
+    h('div',{style:{display:"flex",gap:4}},
+      [1,2,3,4,5].map(n=>h('button',{key:n,onClick:()=>onChange(value===n?0:n),style:{flex:1,height:30,cursor:"pointer",fontSize:11,background:value>=n?color:"transparent",border:"1px solid "+(value>=n?color:C.border),color:value>=n?C.bg:C.muted}},n))));
+}
+function App(){
+  const [tab,setTab]=useState("plan");
+  const [gw,setGw]=useState(0);
+  const [openDay,setOpenDay]=useState(null);
+  const [exModal,setExModal]=useState(null);
+  const [data,setData]=useState({});
+  const [loaded,setLoaded]=useState(false);
+  useEffect(()=>{
+    try{ const raw=localStorage.getItem("trilog-data"); if(raw) setData(JSON.parse(raw)); }catch(e){}
+    setLoaded(true);
+  },[]);
+  const persist=useCallback((next)=>{
+    setData(next);
+    try{ localStorage.setItem("trilog-data",JSON.stringify(next)); }catch(e){}
+  },[]);
+  const wk=flatWeeks[gw];
+  const dayKey=(g,di)=>"d-"+g+"-"+di;
+  const weekKey=(g)=>"w-"+g;
+  const monthKey=(m)=>"m-"+m;
+  const getE=(k)=>data[k]||{};
+  const setE=(k,patch)=>persist(Object.assign({},data,{[k]:Object.assign({},getE(k),patch)}));
+  const stats=(()=>{
+    let done=0,total=0,dist={run:0,bike:0,swim:0};
+    flatWeeks.forEach((w,g)=>w.days.forEach((d,di)=>{
+      if(d.type==="rest")return;
+      total++;
+      const e=data[dayKey(g,di)];
+      if(e&&e.done){done++;const m=d.label.match(/([\d.]+)\s*km/);if(m&&dist[d.type]!==undefined)dist[d.type]+=parseFloat(m[1]);}
+    }));
+    return {done,total,dist};
+  })();
+  const exportData=()=>{
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download="trilog-backup-"+new Date().toISOString().slice(0,10)+".json";
+    a.click(); URL.revokeObjectURL(url);
+  };
+  const importData=(ev)=>{
+    const f=ev.target.files[0]; if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>{ try{ persist(JSON.parse(r.result)); alert("Backup restored"); }catch(e){ alert("Could not read that file."); } };
+    r.readAsText(f);
+  };
+  if(!loaded) return h('div',{style:{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.dim}},"Loading...");
+  const ex=exModal?exerciseLibrary[exModal]:null;
+  return h('div',{style:{minHeight:"100vh",background:C.bg}},
+    ex&&h('div',{onClick:()=>setExModal(null),style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",zIndex:200,display:"flex",alignItems:"flex-end"}},
+      h('div',{onClick:e=>e.stopPropagation(),style:{background:C.surface,border:"1px solid "+C.strength,width:"100%",maxHeight:"88vh",overflowY:"auto",padding:20}},
+        h('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}},
+          h('div',null,
+            h('div',{style:{fontSize:9,color:C.strength,letterSpacing:2,textTransform:"uppercase"}},"Exercise"),
+            h('div',{style:{fontSize:17,fontWeight:700,color:C.text,marginTop:2}},ex.name)),
+          h('button',{onClick:()=>setExModal(null),style:{background:"transparent",border:"none",color:C.dim,fontSize:22,cursor:"pointer"}},"X")),
+        h(Diagram,{type:ex.diagram}),
+        h('div',{style:{fontSize:11,color:C.dim,margin:"10px 0 14px",lineHeight:1.6}},
+          h('span',{style:{color:C.accent}},"Targets: "),ex.target),
+        h('div',{style:{fontSize:10,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:8}},"How to perform"),
+        h('ol',{style:{margin:0,paddingLeft:18,fontSize:12,color:"#bbb",lineHeight:1.85}},
+          ex.cues.map((c,i)=>h('li',{key:i,style:{marginBottom:4}},c))),
+        h('a',{href:"https://www.youtube.com/results?search_query="+encodeURIComponent(ex.name+" exercise how to"),target:"_blank",rel:"noreferrer",
+          style:{display:"block",textAlign:"center",marginTop:16,padding:12,border:"1px solid "+C.run,color:C.run,fontSize:12,textDecoration:"none",letterSpacing:1}},
+          "WATCH DEMO ON YOUTUBE"),
+        h('div',{style:{textAlign:"center",marginTop:12,fontSize:10,color:C.muted}},"Tap outside to close"))),
+    h('div',{style:{background:C.surface,borderBottom:"1px solid "+C.border,padding:"14px 16px",position:"sticky",top:0,zIndex:50}},
+      h('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+        h('div',null,
+          h('div',{style:{fontSize:16,fontWeight:700,color:C.accent,letterSpacing:1}},"TRI-LOG"),
+          h('div',{style:{fontSize:10,color:C.dim}},"Marathon Sep 12 - Ironman 2027")),
+        h('div',{style:{display:"flex",gap:6}},
+          h('button',{onClick:()=>setTab("plan"),style:{background:tab==="plan"?C.accent:"transparent",border:"1px solid "+(tab==="plan"?C.accent:C.border),color:tab==="plan"?C.bg:C.dim,padding:"7px 12px",fontSize:10,cursor:"pointer",letterSpacing:1}},"PLAN"),
+          h('button',{onClick:()=>setTab("dashboard"),style:{background:tab==="dashboard"?C.accent:"transparent",border:"1px solid "+(tab==="dashboard"?C.accent:C.border),color:tab==="dashboard"?C.bg:C.dim,padding:"7px 12px",fontSize:10,cursor:"pointer",letterSpacing:1}},"STATS")))),
+    h('div',{style:{maxWidth:660,margin:"0 auto",padding:"0 16px 80px"}},
+      tab==="plan"&&h('div',null,
+        h('div',{style:{display:"flex",alignItems:"center",gap:8,padding:"14px 0 10px"}},
+          h('button',{onClick:()=>{if(gw>0){setGw(gw-1);setOpenDay(null);}},style:{background:"transparent",border:"1px solid "+(gw===0?"#1a1a1a":C.border),color:gw===0?"#2a2a2a":C.dim,padding:"8px 12px",fontSize:12,cursor:"pointer"}},"<"),
+          h('div',{style:{flex:1,textAlign:"center"}},
+            h('div',{style:{fontSize:13,fontWeight:700,color:wk.phase.color}},"Week "+(gw+1)+" - "+wk.phase.name),
+            h('div',{style:{fontSize:10,color:C.muted}},wk.dates)),
+          h('button',{onClick:()=>{if(gw<flatWeeks.length-1){setGw(gw+1);setOpenDay(null);}},style:{background:"transparent",border:"1px solid "+(gw===flatWeeks.length-1?"#1a1a1a":C.border),color:gw===flatWeeks.length-1?"#2a2a2a":C.dim,padding:"8px 12px",fontSize:12,cursor:"pointer"}},">")),
+        h('div',{style:{display:"flex",gap:3,flexWrap:"wrap",marginBottom:14}},
+          flatWeeks.map((w,i)=>h('button',{key:i,onClick:()=>{setGw(i);setOpenDay(null);},style:{width:20,height:20,fontSize:8,cursor:"pointer",background:i===gw?w.phase.color:"transparent",border:"1px solid "+(i===gw?w.phase.color:C.border),color:i===gw?C.bg:C.muted}},i+1))),
+        h('div',{style:{fontSize:11,color:C.dim,lineHeight:1.6,borderLeft:"2px solid "+wk.phase.color,paddingLeft:10,marginBottom:14}},wk.phase.goal),
+        h('div',{style:{display:"flex",flexDirection:"column",gap:6}},
+          wk.days.map((d,di)=>{
+            const tm=typeMeta[d.type];
+            const isOpen=openDay===di;
+            const entry=getE(dayKey(gw,di));
+            const sess=d.session?strengthSessions[d.session]:null;
+            return h('div',{key:di},
+              h('div',{onClick:()=>setOpenDay(isOpen?null:di),style:{background:isOpen?C.card:"transparent",border:"1px solid "+(isOpen?tm.c:C.border),padding:"11px 12px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}},
+                h('div',{style:{width:32,fontSize:9,color:C.muted,letterSpacing:1}},d.day.toUpperCase()),
+                h('div',{style:{width:3,height:24,background:tm.c,opacity:d.type==="rest"?0.3:1}}),
+                h('div',{style:{flex:1,fontSize:12,color:d.type==="race"?C.accent:d.type==="rest"?C.muted:C.text,fontWeight:d.type==="race"?700:400}},d.label),
+                entry.done&&h('span',{style:{fontSize:11,color:C.run}},"done"),
+                h('div',{style:{width:18,height:18,borderRadius:9,background:tm.c,opacity:d.type==="rest"?0.3:1,color:C.bg,fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}},tm.i)),
+              isOpen&&h('div',{style:{background:"#0e0e0e",border:"1px solid "+tm.c,borderTop:"none",padding:12}},
+                d.detail&&h('div',{style:{fontSize:11,color:C.dim,lineHeight:1.7,marginBottom:10}},d.detail),
+                sess&&h('div',{style:{marginBottom:12}},
+                  h('div',{style:{fontSize:9,color:C.strength,letterSpacing:2,textTransform:"uppercase",marginBottom:6}},sess.label+" - "+sess.duration),
+                  h('div',{style:{display:"flex",flexDirection:"column",gap:4}},
+                    sess.exercises.map((e,ei)=>h('button',{key:ei,onClick:()=>setExModal(e.key),style:{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.card,border:"1px solid "+C.border,padding:"9px 10px",cursor:"pointer",textAlign:"left"}},
+                      h('span',{style:{fontSize:11,color:C.text}},exerciseLibrary[e.key].name),
+                      h('span',{style:{fontSize:10,color:C.strength}},e.sets+" >")))),
+                  h('div',{style:{fontSize:9,color:C.muted,marginTop:5}},"Tap any exercise for diagram + demo")),
+                h('button',{onClick:()=>setE(dayKey(gw,di),{done:!entry.done}),style:{width:"100%",padding:9,marginBottom:10,cursor:"pointer",fontSize:11,letterSpacing:1,background:entry.done?C.run:"transparent",border:"1px solid "+(entry.done?C.run:C.border),color:entry.done?C.bg:C.dim}},entry.done?"COMPLETED":"MARK AS COMPLETE"),
+                d.type!=="rest"&&h('div',null,
+                  h('div',{style:{fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:8}},"How did it feel?"),
+                  h(RatingBar,{label:"Effort",value:entry.effort||0,color:"#FF6B9D",onChange:v=>setE(dayKey(gw,di),{effort:v})}),
+                  h(RatingBar,{label:"Energy",value:entry.energy||0,color:"#3FFFCF",onChange:v=>setE(dayKey(gw,di),{energy:v})}),
+                  h(RatingBar,{label:"Soreness",value:entry.soreness||0,color:"#FF9F47",onChange:v=>setE(dayKey(gw,di),{soreness:v})})),
+                h('div',{style:{fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase",margin:"8px 0 5px"}},"Notes"),
+                h('textarea',{value:entry.note||"",onChange:e=>setE(dayKey(gw,di),{note:e.target.value}),placeholder:"Pace, pain, fuelling, weather...",style:{width:"100%",minHeight:54,background:C.card,border:"1px solid "+C.border,color:C.text,fontSize:11,padding:8,resize:"vertical"}})));
+          })),
+        (()=>{const we=getE(weekKey(gw));return h('div',{style:{marginTop:16,background:C.card,border:"1px solid "+C.border,padding:14}},
+          h('div',{style:{fontSize:10,color:wk.phase.color,letterSpacing:2,textTransform:"uppercase",marginBottom:10}},"Week "+(gw+1)+" Review"),
+          h(RatingBar,{label:"Overall effort",value:we.effort||0,color:"#FF6B9D",onChange:v=>setE(weekKey(gw),{effort:v})}),
+          h(RatingBar,{label:"Overall energy",value:we.energy||0,color:"#3FFFCF",onChange:v=>setE(weekKey(gw),{energy:v})}),
+          h(RatingBar,{label:"Overall soreness",value:we.soreness||0,color:"#FF9F47",onChange:v=>setE(weekKey(gw),{soreness:v})}),
+          h('div',{style:{fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase",margin:"8px 0 5px"}},"Week notes (share at check-in)"),
+          h('textarea',{value:we.note||"",onChange:e=>setE(weekKey(gw),{note:e.target.value}),placeholder:"How did the week go overall?",style:{width:"100%",minHeight:60,background:C.surface,border:"1px solid "+C.border,color:C.text,fontSize:11,padding:8,resize:"vertical"}}));})(),
+        (()=>{const m=wk.phaseIdx;const me=getE(monthKey(m));return h('div',{style:{marginTop:12,background:C.card,border:"1px solid "+wk.phase.color,padding:14}},
+          h('div',{style:{fontSize:10,color:wk.phase.color,letterSpacing:2,textTransform:"uppercase",marginBottom:4}},wk.phase.name+" Phase Review"),
+          h('div',{style:{fontSize:10,color:C.muted,marginBottom:10}},wk.phase.dates),
+          h(RatingBar,{label:"Phase effort",value:me.effort||0,color:"#FF6B9D",onChange:v=>setE(monthKey(m),{effort:v})}),
+          h(RatingBar,{label:"Phase energy",value:me.energy||0,color:"#3FFFCF",onChange:v=>setE(monthKey(m),{energy:v})}),
+          h(RatingBar,{label:"Confidence",value:me.confidence||0,color:"#4DA6FF",onChange:v=>setE(monthKey(m),{confidence:v})}),
+          h('div',{style:{fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase",margin:"8px 0 5px"}},"Phase reflection"),
+          h('textarea',{value:me.note||"",onChange:e=>setE(monthKey(m),{note:e.target.value}),placeholder:"How is the body holding up? Progress vs goals?",style:{width:"100%",minHeight:60,background:C.surface,border:"1px solid "+C.border,color:C.text,fontSize:11,padding:8,resize:"vertical"}}));})()
+      ),
+      tab==="dashboard"&&h('div',null,
+        h('div',{style:{padding:"16px 0 10px",fontSize:13,fontWeight:700,color:C.accent,letterSpacing:1}},"PROGRESS DASHBOARD"),
+        h('div',{style:{background:C.card,border:"1px solid "+C.border,padding:14,marginBottom:10}},
+          h('div',{style:{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:8}},"SESSIONS COMPLETED"),
+          h('div',{style:{display:"flex",alignItems:"baseline",gap:8}},
+            h('span',{style:{fontSize:32,fontWeight:700,color:C.accent}},stats.done),
+            h('span',{style:{fontSize:14,color:C.muted}},"/ "+stats.total)),
+          h('div',{style:{background:C.surface,height:6,marginTop:8}},
+            h('div',{style:{background:C.accent,height:6,width:(stats.total?Math.round(stats.done/stats.total*100):0)+"%"}}))),
+        h('div',{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}},
+          [["Run",stats.dist.run,C.run],["Bike",stats.dist.bike,C.bike],["Swim",stats.dist.swim,C.swim]].map(a=>
+            h('div',{key:a[0],style:{background:C.card,border:"1px solid "+C.border,padding:"12px 10px"}},
+              h('div',{style:{fontSize:20,fontWeight:700,color:a[2],marginTop:4}},Math.round(a[1])),
+              h('div',{style:{fontSize:9,color:C.muted,letterSpacing:1}},"KM "+a[0].toUpperCase())))),
+        h('div',{style:{fontSize:9,color:C.muted,marginBottom:14,lineHeight:1.6}},"Distance counts completed sessions only. Swims are time-based and not totalled."),
+        h('div',{style:{background:C.card,border:"1px solid "+C.border,padding:14,marginBottom:10}},
+          h('div',{style:{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:12}},"WEEKLY RATINGS TREND"),
+          (()=>{
+            const rated=flatWeeks.map((w,g)=>({g,e:data[weekKey(g)]})).filter(x=>x.e&&(x.e.effort||x.e.energy||x.e.soreness));
+            if(!rated.length)return h('div',{style:{fontSize:11,color:C.muted}},"Rate your weeks to see the trend build here.");
+            return [["Effort","effort","#FF6B9D"],["Energy","energy","#3FFFCF"],["Soreness","soreness","#FF9F47"]].map(r=>
+              h('div',{key:r[1],style:{marginBottom:10}},
+                h('div',{style:{fontSize:10,color:r[2],marginBottom:4}},r[0]),
+                h('div',{style:{display:"flex",gap:3,alignItems:"flex-end",height:44}},
+                  rated.map(x=>h('div',{key:x.g,style:{flex:1,minWidth:6,background:x.e[r[1]]?r[2]:"#1c1c1c",height:((x.e[r[1]]||0)/5*100)+"%",minHeight:3}})))));
+          })()),
+        h('div',{style:{background:C.card,border:"1px solid "+C.border,padding:14,marginBottom:10}},
+          h('div',{style:{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:10}},"PHASE CONFIDENCE"),
+          phases.map((ph,pi)=>{
+            const me=data[monthKey(pi)];const cf=me&&me.confidence?me.confidence:0;
+            return h('div',{key:pi,style:{marginBottom:8}},
+              h('div',{style:{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:3}},
+                h('span',{style:{color:ph.color}},ph.name),
+                h('span',{style:{color:cf?ph.color:C.muted}},cf?cf+"/5":"not rated")),
+              h('div',{style:{background:C.surface,height:5}},
+                h('div',{style:{background:ph.color,height:5,width:(cf/5*100)+"%"}})));
+          })),
+        h('div',{style:{background:C.card,border:"1px solid "+C.border,padding:14}},
+          h('div',{style:{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:10}},"BACKUP & RESTORE"),
+          h('div',{style:{fontSize:10,color:C.muted,lineHeight:1.7,marginBottom:10}},"Your data is saved on this device. Export a backup file to iCloud/Files now and then so you never lose your training history."),
+          h('button',{onClick:exportData,style:{width:"100%",padding:10,marginBottom:8,background:"transparent",border:"1px solid "+C.accent,color:C.accent,fontSize:11,letterSpacing:1,cursor:"pointer"}},"EXPORT BACKUP"),
+          h('label',{style:{display:"block",width:"100%",padding:10,background:"transparent",border:"1px solid "+C.border,color:C.dim,fontSize:11,letterSpacing:1,cursor:"pointer",textAlign:"center"}},"RESTORE FROM BACKUP",
+            h('input',{type:"file",accept:".json,application/json",onChange:importData,style:{display:"none"}}))),
+        h('div',{style:{marginTop:14,padding:12,background:"#0e0e0e",border:"1px solid #1a1a1a",fontSize:10,color:"#555",lineHeight:1.8}},
+          h('span',{style:{color:C.accent}},"Saved automatically. "),"Export a backup before clearing Safari or switching phones.")
+      )
+    )
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+</script>
+</body>
+</html>
